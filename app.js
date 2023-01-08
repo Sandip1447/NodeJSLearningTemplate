@@ -10,6 +10,11 @@ const rootDir = require('./util/path')
 
 const app = express();
 
+// Template engine (Working with ejs)
+app.set('view engine', 'ejs');
+app.set('views', 'views');
+
+
 // manually created routes need to below the app object
 const adminData = require('./routes/admin')
 const shopRoutes = require('./routes/shop')
@@ -33,8 +38,7 @@ app.use(shopRoutes);
 
 //Adding 404 page error page
 app.use((req, res, next) => {
-    // res.status(404).send('<h1> Page not fount.</h1>')
-    res.status(404).sendFile(path.join(rootDir, 'views', '404.html'))
+    res.status(404).render('404', {pageTitle: 'Page Not Found'})
 });
 
 /*
