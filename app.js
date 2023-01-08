@@ -11,7 +11,7 @@ const rootDir = require('./util/path')
 const app = express();
 
 // manually created routes need to below the app object
-const adminRoutes = require('./routes/admin')
+const adminData = require('./routes/admin')
 const shopRoutes = require('./routes/shop')
 
 
@@ -28,7 +28,7 @@ app.use(express.static(path.join(rootDir, 'public')))
 
 // Request goes to the files top to bottom so we are added this route here.
 // Added filter with admin
-app.use('/admin', adminRoutes);
+app.use('/admin', adminData.routes);
 app.use(shopRoutes);
 
 //Adding 404 page error page
