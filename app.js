@@ -4,6 +4,7 @@ const http = require('http');
 
 const express = require('express');
 const bodyParser = require('body-parser');
+const errorController = require('./controllers/error')
 
 //Adding path route
 const rootDir = require('./util/path')
@@ -16,7 +17,7 @@ app.set('views', 'views');
 
 
 // manually created routes need to below the app object
-const adminData = require('./routes/admin')
+const adminRoutes = require('./routes/admin')
 const shopRoutes = require('./routes/shop')
 
 
@@ -33,13 +34,11 @@ app.use(express.static(path.join(rootDir, 'public')))
 
 // Request goes to the files top to bottom so we are added this route here.
 // Added filter with admin
-app.use('/admin', adminData.routes);
+app.use('/admin', adminRoutes);
 app.use(shopRoutes);
 
 //Adding 404 page error page
-app.use((req, res, next) => {
-    res.status(404).render('404', {pageTitle: 'Page Not Found'})
-});
+app.use(errorController.get404);
 
 /*
 * END before server object
