@@ -6,6 +6,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const errorController = require('./controllers/error')
 
+const mongoConnect = require('./util/datatbase').mongoConnect;
+const User = require('./models/user')
+
 //Adding path route
 const rootDir = require('./util/path')
 
@@ -26,6 +29,20 @@ app.use(express.urlencoded({extended: true}))
 // serving files statically
 app.use(express.static(path.join(rootDir, 'public')))
 
+app.use((req, res, next) => {
+    User.findById("63c2721af1b1a6917c2cf2ff")
+        .then(user => {
+            req.user = new User(
+                user._id,
+                user.name,
+                user.email,
+                user.cart
+            );
+            next()
+        }).catch(err => {
+        console.log(err)
+    })
+})
 
 /*
 *
@@ -44,4 +61,7 @@ app.use(errorController.get404);
 * END before server object
 * */
 
-app.listen(3000);
+mongoConnect(() => {
+    app.listen(3000);
+})
+
