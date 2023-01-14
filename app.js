@@ -1,12 +1,12 @@
 const path = require('path');
 
-const http = require('http');
+const mongoose = require("mongoose");
 
 const express = require('express');
 const bodyParser = require('body-parser');
+
 const errorController = require('./controllers/error')
 
-const mongoConnect = require('./util/datatbase').mongoConnect;
 const User = require('./models/user')
 
 //Adding path route
@@ -30,14 +30,9 @@ app.use(express.urlencoded({extended: true}))
 app.use(express.static(path.join(rootDir, 'public')))
 
 app.use((req, res, next) => {
-    User.findById("63c2721af1b1a6917c2cf2ff")
+    User.findById("63c2b2911381f36649243b78")
         .then(user => {
-            req.user = new User(
-                user._id,
-                user.name,
-                user.email,
-                user.cart
-            );
+            req.user = user;
             next()
         }).catch(err => {
         console.log(err)
@@ -61,7 +56,25 @@ app.use(errorController.get404);
 * END before server object
 * */
 
-mongoConnect(() => {
-    app.listen(3000);
+mongoose.set('strictQuery', false);
+mongoose.connect('mongodb+srv://node-learning:ghXeXmNN9QgFJyas@learning.viy5zbu.mongodb.net/shop?retryWrites=true&w=majority', {
+    useNewUrlParser: true
 })
-
+    .then(result => {
+        User.findOne().then(user => {
+            if (!user) {
+                // Create a new user
+                const user = new User({
+                    name: 'Pooja',
+                    email: 'pooja@node.com',
+                    cart: {
+                        items: []
+                    }
+                })
+                user.save();
+            }
+        })
+        app.listen(3000);
+    }).catch(err => {
+    console.log(err);
+});

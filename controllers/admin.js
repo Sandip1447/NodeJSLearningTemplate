@@ -1,4 +1,3 @@
-// Share data across the request & users
 const Product = require('../models/product')
 
 exports.getAddProduct = (req, res, next) => {
@@ -12,7 +11,14 @@ exports.postAddProduct = (req, res, next) => {
     const imageUrl = req.body.imageUrl;
     const description = req.body.description;
     const price = req.body.price;
-    const product = new Product(null, req.user._id, title, imageUrl, description, price);
+    const product = new Product({
+        title: title,
+        imageUrl: imageUrl,
+        description: description,
+        price: price,
+        userId: req.user
+    })
+
     product.save()
         .then(result => {
             console.log(result)
@@ -25,7 +31,8 @@ exports.postAddProduct = (req, res, next) => {
 }
 
 exports.getProducts = (req, res, next) => {
-    Product.fetchAll()
+    Product.find()
+        // .populate('userId')
         .then(products => {
             console.log(products);
             res.render('admin/products', {
@@ -64,21 +71,27 @@ exports.postEditProduct = (req, res, next) => {
     const updatedImageUrl = req.body.imageUrl;
     const updatedDesc = req.body.description;
 
-    const product = new Product(prodId, req.user._id, updatedTitle, updatedImageUrl, updatedDesc, updatedPrice);
-    product
-        .save()
+    Product.findById(prodId)
         .then(product => {
-            res.redirect('/admin/products');
-        }).catch(err => {
-        console.log(err);
+            product.title = updatedTitle
+            product.description = updatedDesc
+            product.price = updatedPrice
+            product.imageUrl = updatedImageUrl
+            product.userId = req.user._id
+            return product.save();
+        }).then(result => {
+        console.log('UPDATED PRODUCT!')
+        res.redirect('/admin/products');
+    }).catch(err => {
+        console.log(err)
     });
 };
 
-
 exports.postDeleteProduct = (req, res, next) => {
     const prodId = req.body.productId;
-    Product.deleteById(prodId)
+    Product.findOneAndRemove(prodId)
         .then(result => {
+            console.log('PRODUCT REMOVED!')
             res.redirect('/admin/products');
         }).catch(err => {
         console.log(err);
