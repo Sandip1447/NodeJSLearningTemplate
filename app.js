@@ -1,12 +1,14 @@
 const path = require('path');
 const dotenv = require('dotenv');
 dotenv.config();
+const csrf = require('csurf');
+const flash = require('connect-flash')
+
 const express = require('express');
 
 const mongoose = require("mongoose");
 const session = require("express-session");
 const MongoDBStore = require("connect-mongodb-session")(session);
-
 
 const errorController = require('./controllers/error')
 const User = require('./models/user')
@@ -18,6 +20,8 @@ const store = new MongoDBStore({
     uri: process.env.MONGODB_URL,
     collection: 'sessions'
 });
+// setup route middlewares
+const csrfProtection = csrf();
 
 // Template engine (Working with ejs)
 app.set('view engine', 'ejs');
@@ -42,6 +46,9 @@ app.use(session({
     secret: process.env.SECRET,
     store: store
 }))
+//After session secure csurf token
+app.use(csrfProtection)
+app.use(flash())
 
 app.use((req, res, next) => {
     if (!req.session.user) {
@@ -54,6 +61,12 @@ app.use((req, res, next) => {
         })
         .catch(err => console.log(err));
 });
+
+app.use((req, res, next) => {
+res.locals.isAuthenticated = req.session.isLoggedIn
+res.locals.csrfToken = req.csrfToken()
+    next();
+})
 
 /*
 *
@@ -76,22 +89,9 @@ app.use(errorController.get404);
 mongoose.set('strictQuery', false);
 mongoose.connect(
     process.env.MONGODB_URL, {
-    useNewUrlParser: true
-})
+        useNewUrlParser: true
+    })
     .then(result => {
-        User.findOne().then(user => {
-            if (!user) {
-                // Create a new user
-                const user = new User({
-                    name: 'Pooja',
-                    email: 'pooja@node.com',
-                    cart: {
-                        items: []
-                    }
-                });
-                user.save();
-            }
-        });
         app.listen(3000);
     }).catch(err => {
     console.log(err);
