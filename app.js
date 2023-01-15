@@ -1,18 +1,23 @@
 const path = require('path');
+const dotenv = require('dotenv');
+dotenv.config();
+const express = require('express');
 
 const mongoose = require("mongoose");
+const session = require("express-session");
+const MongoDBStore = require("connect-mongodb-session")(session);
 
-const express = require('express');
-const bodyParser = require('body-parser');
 
 const errorController = require('./controllers/error')
-
 const User = require('./models/user')
-
 //Adding path route
 const rootDir = require('./util/path')
 
 const app = express();
+const store = new MongoDBStore({
+    uri: process.env.MONGODB_URL,
+    collection: 'sessions'
+});
 
 // Template engine (Working with ejs)
 app.set('view engine', 'ejs');
@@ -21,6 +26,7 @@ app.set('views', 'views');
 
 // manually created routes need to below the app object
 const adminRoutes = require('./routes/admin')
+const authRoutes = require('./routes/auth')
 const shopRoutes = require('./routes/shop')
 
 
@@ -29,15 +35,25 @@ app.use(express.urlencoded({extended: true}))
 // serving files statically
 app.use(express.static(path.join(rootDir, 'public')))
 
+//Handle session
+app.use(session({
+    resave: false,
+    saveUninitialized: false,
+    secret: process.env.SECRET,
+    store: store
+}))
+
 app.use((req, res, next) => {
-    User.findById("63c2b2911381f36649243b78")
+    if (!req.session.user) {
+        return next();
+    }
+    User.findById(req.session.user._id)
         .then(user => {
             req.user = user;
-            next()
-        }).catch(err => {
-        console.log(err)
-    })
-})
+            next();
+        })
+        .catch(err => console.log(err));
+});
 
 /*
 *
@@ -48,6 +64,7 @@ app.use((req, res, next) => {
 // Added filter with admin
 app.use('/admin', adminRoutes);
 app.use(shopRoutes);
+app.use(authRoutes);
 
 //Adding 404 page error page
 app.use(errorController.get404);
@@ -57,7 +74,8 @@ app.use(errorController.get404);
 * */
 
 mongoose.set('strictQuery', false);
-mongoose.connect('mongodb+srv://node-learning:ghXeXmNN9QgFJyas@learning.viy5zbu.mongodb.net/shop?retryWrites=true&w=majority', {
+mongoose.connect(
+    process.env.MONGODB_URL, {
     useNewUrlParser: true
 })
     .then(result => {
@@ -70,10 +88,10 @@ mongoose.connect('mongodb+srv://node-learning:ghXeXmNN9QgFJyas@learning.viy5zbu.
                     cart: {
                         items: []
                     }
-                })
+                });
                 user.save();
             }
-        })
+        });
         app.listen(3000);
     }).catch(err => {
     console.log(err);
