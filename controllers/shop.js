@@ -6,39 +6,69 @@ const PDFDocument = require('pdfkit');
 const Product = require('../models/product')
 const Order = require('../models/order')
 
+const itemsPerPage = 3;
+
 exports.getIndex = (req, res, next) => {
+    const page = +req.query.page || 1;
+    let totalItems;
     Product.find()
+        .countDocuments()
+        .then(numProducts => {
+            totalItems = numProducts;
+            return Product.find()
+                .skip((page - 1) * itemsPerPage)
+                .limit(itemsPerPage);
+        })
         .then(products => {
-            // console.log(products);
             res.render('shop/index', {
                 prods: products,
                 pageTitle: 'Shop',
-                path: '/'
+                path: '/',
+                currentPage: page,
+                hasNextPage: itemsPerPage * page < totalItems,
+                hasPreviousPage: page > 1,
+                nextPage: page + 1,
+                previousPage: page - 1,
+                lastPage: Math.ceil(totalItems / itemsPerPage)
             });
-        }).catch(err => {
-        console.log(err);
-        const error = new Error(err);
-        err.httpStatusCode = 500
-        return next(error)
-    });
+        })
+        .catch(err => {
+            const error = new Error(err);
+            error.httpStatusCode = 500;
+            return next(error);
+        });
 }
 
 exports.getProducts = (req, res, next) => {
+    const page = +req.query.page || 1;
+    let totalItems;
+
     Product.find()
+        .countDocuments()
+        .then(numProducts => {
+            totalItems = numProducts;
+            return Product.find()
+                .skip((page - 1) * itemsPerPage)
+                .limit(itemsPerPage);
+        })
         .then(products => {
-            // console.log(products);
             res.render('shop/product-list', {
                 prods: products,
-                pageTitle: 'All Products',
-                path: '/products'
+                pageTitle: 'Products',
+                path: '/products',
+                currentPage: page,
+                hasNextPage: itemsPerPage * page < totalItems,
+                hasPreviousPage: page > 1,
+                nextPage: page + 1,
+                previousPage: page - 1,
+                lastPage: Math.ceil(totalItems / itemsPerPage)
             });
-        }).catch(err => {
-            console.log(err);
+        })
+        .catch(err => {
             const error = new Error(err);
-            err.httpStatusCode = 500
-            return next(error)
-        }
-    );
+            error.httpStatusCode = 500;
+            return next(error);
+        });
 
 }
 
@@ -156,10 +186,10 @@ exports.getOrders = (req, res, next) => {
 
 exports.getInvoice = (req, res, next) => {
     const orderId = req.params.orderId;
-   // console.log(orderId)
+    // console.log(orderId)
     Order.findById(orderId)
         .then(order => {
-           // console.log(order)
+            // console.log(order)
             if (!order) {
                 return next(new Error('No order found.'));
             }
