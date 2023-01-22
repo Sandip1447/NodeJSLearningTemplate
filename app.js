@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 const csrf = require('csurf');
 const flash = require('connect-flash')
+const multer = require('multer')
 
 const express = require('express');
 
@@ -23,6 +24,36 @@ const store = new MongoDBStore({
 // setup route middlewares
 const csrfProtection = csrf();
 
+const fileStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads')
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+        let ext = file.originalname.substring(file.originalname.lastIndexOf('.'), file.originalname.length);
+        cb(null, file.fieldname + '-' + uniqueSuffix + ext)
+    }
+})
+
+const fileFilter = (req, file, cb) => {
+    if (
+        file.mimetype === 'image/png' ||
+        file.mimetype === 'image/jpeg' ||
+        file.mimetype === 'image/jpg'
+    ) {
+        // To accept the file pass `true`, like so:
+        cb(null, true)
+
+    } else {
+        // To reject this file pass `false`, like so:
+        cb(null, false)
+    }
+
+
+}
+const upload = multer({storage: fileStorage, fileFilter: fileFilter})
+
+
 // Template engine (Working with ejs)
 app.set('view engine', 'ejs');
 app.set('views', 'views');
@@ -36,8 +67,10 @@ const shopRoutes = require('./routes/shop')
 
 //Adding body parser
 app.use(express.urlencoded({extended: true}))
+app.use(upload.single('image'))
 // serving files statically
 app.use(express.static(path.join(rootDir, 'public')))
+app.use('/uploads',express.static(path.join(rootDir, 'uploads')))
 
 //Handle session
 app.use(session({
@@ -85,7 +118,7 @@ app.use('/admin', adminRoutes);
 app.use(shopRoutes);
 app.use(authRoutes);
 
-app.get('/500',errorController.get500);
+app.get('/500', errorController.get500);
 
 //Adding 404 page error page
 app.use(errorController.get404);

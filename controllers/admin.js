@@ -1,5 +1,6 @@
 const Product = require('../models/product')
 const {validationResult} = require('express-validator')
+const fileHelper = require('../util/file')
 
 exports.getAddProduct = (req, res, next) => {
     res.render('admin/edit-product', {
@@ -14,11 +15,28 @@ exports.getAddProduct = (req, res, next) => {
 
 exports.postAddProduct = (req, res, next) => {
     const title = req.body.title;
-    const imageUrl = req.body.imageUrl;
+    const image = req.file;
     const description = req.body.description;
     const price = req.body.price;
     const errors = validationResult(req);
 
+    if (!image) {
+        return res.status(422).render('admin/edit-product', {
+            pageTitle: 'Add Product',
+            path: '/admin/add-product',
+            editing: false,
+            hasError: true,
+            product: {
+                title: title,
+                description: description,
+                price: price,
+            },
+            errorMessage: 'Attached file is not supported.',
+            validationErrors: errors.array()
+        });
+    }
+    console.log(image)
+    const imageUrl = '/' + image.path
     if (!errors.isEmpty()) {
         return res.status(422).render('admin/edit-product', {
             pageTitle: 'Add Product',
@@ -50,7 +68,7 @@ exports.postAddProduct = (req, res, next) => {
             console.log('created product');
             res.redirect('/admin/products');
         }).catch(err => {
-        console.log(err);
+        // console.log(err);
         const error = new Error(err);
         err.httpStatusCode = 500
         return next(error)
@@ -113,10 +131,11 @@ exports.postEditProduct = (req, res, next) => {
     const prodId = req.body.productId;
     const updatedTitle = req.body.title;
     const updatedPrice = req.body.price;
-    const updatedImageUrl = req.body.imageUrl;
+    const image = req.file;
     const updatedDesc = req.body.description;
-
     const errors = validationResult(req);
+
+    let updatedImagePath;
 
     if (!errors.isEmpty()) {
         return res.status(422).render('admin/edit-product', {
@@ -127,7 +146,6 @@ exports.postEditProduct = (req, res, next) => {
             product: {
                 _id: prodId,
                 title: updatedTitle,
-                imageUrl: updatedImageUrl,
                 description: updatedDesc,
                 price: updatedPrice,
             },
@@ -144,7 +162,11 @@ exports.postEditProduct = (req, res, next) => {
             product.title = updatedTitle
             product.description = updatedDesc
             product.price = updatedPrice
-            product.imageUrl = updatedImageUrl
+            if (!image) {
+                fileHelper.deleteFile(product.imageUrl)
+                updatedImagePath = '/' + image.path
+                product.imageUrl = updatedImagePath
+            }
             product.userId = req.user._id
             return product.save().then(result => {
                 console.log('UPDATED PRODUCT!')
@@ -152,7 +174,7 @@ exports.postEditProduct = (req, res, next) => {
 
             })
         }).catch(err => {
-        console.log(err)
+        // console.log(err)
         const error = new Error(err);
         err.httpStatusCode = 500
         return next(error)
@@ -161,11 +183,16 @@ exports.postEditProduct = (req, res, next) => {
 
 exports.postDeleteProduct = (req, res, next) => {
     const prodId = req.body.productId;
-    Product.deleteOne({_id: prodId, userId: req.user._id})
-        .then(result => {
-            console.log('PRODUCT REMOVED!')
-            res.redirect('/admin/products');
-        }).catch(err => {
+    Product.findById(prodId).then(product => {
+        if (!product) {
+            return next(new Error('Product not found.'))
+        }
+        fileHelper.deleteFile(product.imageUrl)
+        return Product.deleteOne({_id: prodId, userId: req.user._id});
+    }).then(() => {
+        console.log('PRODUCT REMOVED!')
+        res.redirect('/admin/products');
+    }).catch(err => {
         console.log(err);
         const error = new Error(err);
         err.httpStatusCode = 500
